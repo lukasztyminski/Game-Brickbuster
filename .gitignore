@@ -1,3 +1,9 @@
+# Public generated files
+public/application.js
+public/application.js.map
+public/style.css
+public/style.css.map
+
 # Logs
 logs
 *.log
