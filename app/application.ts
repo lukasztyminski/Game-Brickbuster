@@ -93,8 +93,30 @@ class Obstacle extends Rect {
     }
 }
 
-class Ball extends Rect {
+class Sprite extends Obstacle {
     sprite: HTMLElement;
+
+    constructor(sprite: HTMLElement, left? : number, top?: number, right?: number, bottom?: number) {
+        bottom = bottom || sprite.offsetTop + sprite.offsetHeight;
+        right = right || sprite.offsetLeft + sprite.offsetWidth;
+        top = top || sprite.offsetTop;
+        left = left || sprite.offsetLeft;
+
+        super(left, top, right, bottom);
+        this.sprite = sprite;
+    }
+
+    moveTo(rect : Rect) {
+        super.moveTo(rect);
+
+        let {x: posX, y: posY} = this.topLeft;
+
+	    this.sprite.style.left = posX + 'px';
+        this.sprite.style.top = posY + 'px';         
+    }
+}
+
+class Ball extends Sprite {
 
     radius : number;
     dir  : Vector;
@@ -106,7 +128,7 @@ class Ball extends Rect {
 
     constructor(sprite: HTMLElement, dir : Vector) {
         var radius = parseInt(getComputedStyle(sprite)['border-top-left-radius']);
-        super(sprite.offsetLeft, sprite.offsetTop, sprite.offsetLeft + 2 * radius, sprite.offsetTop + 2 * radius);
+        super(sprite, sprite.offsetLeft, sprite.offsetTop, sprite.offsetLeft + 2 * radius, sprite.offsetTop + 2 * radius);
         this.sprite = sprite;
         this.radius = radius;        
         this.dir = dir;        
@@ -125,30 +147,28 @@ class Ball extends Rect {
     bounceVertical() {
         this.dir.flipX();
     } 
+}
 
-    moveTo(rect : Rect) {
-        super.moveTo(rect);
+class Paddle extends Sprite {
 
-        let {x: posX, y: posY} = this.topLeft;
-
-	    this.sprite.style.left = posX + 'px';
-        this.sprite.style.top = posY + 'px';         
-    }
 }
 
 class Game {
-    loopInterval: number = 20;
+    loopInterval: number = 10;
     ball: Ball;
+    paddle: Paddle;
 
     wallLeft : Obstacle;
     wallTop: Obstacle;
     wallRight: Obstacle;
     wallBottom: Obstacle;    
 
-    constructor(ballElement : HTMLElement, boardElement : HTMLElement) {
+    constructor(ballElement : HTMLElement, paddle: HTMLElement, boardElement : HTMLElement) {
+        this.paddle = new Paddle(paddle);
+
         this.ball = new Ball(
             ballElement,            
-            new Vector(1, -1) 
+            new Vector(3, -3) 
         );
 
         this.createWalls(this.ball.radius, boardElement.offsetWidth, boardElement.offsetHeight);
@@ -172,7 +192,17 @@ class Game {
                 this.ball.bounceHorizontal();
             }     
 
-            this.ball.moveTo(newBallPosition);
+            switch (this.paddle.checkCollision(newBallPosition)) {
+                case (Side.Left):
+                case (Side.Right):
+                    this.ball.bounceHorizontal();
+                    break;
+
+                case (Side.Top):
+                    this.ball.bounceVertical();
+            }
+
+            this.ball.moveTo(this.ball.calculateNewPosition());
        }, this.loopInterval) 
     }
 }
@@ -181,6 +211,7 @@ console.log('Hello from BrickBuster !!!');
 
 var game = new Game(
     <HTMLElement>document.getElementsByClassName("ball")[0],
+    <HTMLElement>document.getElementsByClassName("paddle")[0],
     <HTMLElement>document.getElementsByClassName("game-board")[0]
 );
 
