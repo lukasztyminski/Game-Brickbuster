@@ -12,36 +12,60 @@ class Point {
     }
 }
 
-class Ball {
+class Vector extends Point {
+    flipX() {
+        this.x *= -1;
+    }
+
+    flipY() {
+        this.y *= -1;
+    }
+}
+
+class Rect {
+    topLeft : Point;
+    bottomRight : Point;
+
+    constructor(left : number, top: number, right: number, bottom: number) {
+        this.topLeft = new Point(left, top);
+        this.bottomRight = new Point(right, bottom);
+    }
+
+    add(point: Point) {
+        this.topLeft.add(point);
+        this.bottomRight.add(point);
+    }
+}
+
+class Ball extends Rect {
     radius : number;
-    pos  : Point;
-    dir  : Point;
+    dir  : Vector;
     min  : Point;
     max  : Point;
 
     constructor(radius : number, posX : number, posY : number, dirX : number, dirY : number) {
-        this.radius = radius;
-        this.pos = new Point(posX, posY);
-        this.dir = new Point(dirX, dirY);        
+        super(posX, posY, posX + 2 * radius, posY + 2 * radius);
+        this.radius = radius;        
+        this.dir = new Vector(dirX, dirY);        
     }
 
     move() : Point {
-        if (this.pos.x + this.dir.x <= this.min.x) {
-            this.dir.x *= -1;
+        if (this.topLeft.x + this.dir.x <= this.min.x) {
+            this.dir.flipX();
         }
-        if (this.pos.y + this.dir.y <= this.min.y) {
-            this.dir.y *= -1;
+        if (this.topLeft.y + this.dir.y <= this.min.y) {
+            this.dir.flipY();
         }
-        if (this.pos.x + this.dir.x + this.radius * 2 >= this.max.x) {
-            this.dir.x *= -1;
+        if (this.topLeft.x + this.dir.x + this.radius * 2 >= this.max.x) {
+            this.dir.flipX();
         }
-        if (this.pos.y + this.dir.y + this.radius * 2 >= this.max.y) {
-            this.dir.y *= -1;
+        if (this.topLeft.y + this.dir.y + this.radius * 2 >= this.max.y) {
+            this.dir.flipY();
         }        
 
-        this.pos.add(this.dir);
+        this.add(this.dir);
 
-        return this.pos;
+        return this.topLeft;
     }
 
     setConstraints(minX : number, minY : number, maxX : number, maxY : number) {
