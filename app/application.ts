@@ -105,6 +105,7 @@ class Obstacle extends Rect {
 
 class Sprite extends Obstacle {
     sprite: HTMLElement;
+    isVisible: Boolean;
 
     constructor(sprite: HTMLElement, left? : number, top?: number, right?: number, bottom?: number) {
         bottom = bottom || sprite.offsetTop + sprite.offsetHeight;
@@ -114,6 +115,7 @@ class Sprite extends Obstacle {
 
         super(left, top, right, bottom);
         this.sprite = sprite;
+        this.isVisible = true;
     }
 
     moveTo(rect : Rect) {
@@ -123,6 +125,18 @@ class Sprite extends Obstacle {
 
 	    this.sprite.style.left = posX + 'px';
         this.sprite.style.top = posY + 'px';         
+    }
+
+    hide() {
+        this.sprite.style.display = 'none';
+        this.isVisible = false;
+    }    
+
+    checkCollision(anotherRect : Rect) : Side {
+        if (!this.isVisible) {
+            return Side.None;
+        }
+        return super.checkCollision(anotherRect);
     }
 }
 
@@ -157,10 +171,6 @@ class Ball extends Sprite {
     bounceVertical() {
         this.dir.flipX();
     } 
-
-    hide() {
-        this.sprite.style.display = 'none';
-    }
 }
 
 class Paddle extends Sprite {
@@ -187,6 +197,10 @@ class Paddle extends Sprite {
     }
 }
 
+class Brick extends Sprite {
+
+}
+
 enum GameState {
     Running,
     GameOver
@@ -202,13 +216,14 @@ class Game {
     gameState: GameState;
     ball: Ball;
     paddle: Paddle;
+    bricks: Array<Brick> = [];
 
     wallLeft : Obstacle;
     wallTop: Obstacle;
     wallRight: Obstacle;
     wallBottom: Obstacle;    
 
-    constructor(ballElement : HTMLElement, paddle: HTMLElement, boardElement : HTMLElement) {
+    constructor(ballElement : HTMLElement, paddle: HTMLElement, bricks: HTMLCollection, boardElement : HTMLElement) {
         this.gameState = GameState.Running;
         this.paddle = new Paddle(paddle, boardElement.offsetWidth);
 
@@ -216,6 +231,10 @@ class Game {
             ballElement,            
             new Vector(3, -3) 
         );
+
+        for (let i = 0; i < bricks.length; i++) {
+            this.bricks.push(new Brick(<HTMLElement>bricks[i]));
+        }
 
         this.createWalls(this.ball.radius, boardElement.offsetWidth, boardElement.offsetHeight);
     }
@@ -233,10 +252,10 @@ class Game {
                 return;
             }
             if (e.keyCode == KeyCodes.LEFT) {
-                this.paddle.moveLeft(5);
+                this.paddle.moveLeft(30);
             }
             if (e.keyCode == KeyCodes.RIGHT) {
-                this.paddle.moveRight(5);
+                this.paddle.moveRight(30);
             }
 
         });
@@ -260,6 +279,27 @@ class Game {
                 this.ball.bounceHorizontal();
             }     
 
+            for (let brick of this.bricks) {
+                let wasHit = false;
+
+                switch (brick.checkCollision(newBallPosition)) {
+                    case (Side.Left):
+                    case (Side.Right):
+                        this.ball.bounceHorizontal();
+                        wasHit = true;
+                        break;
+
+                    case (Side.Top):                    
+                        this.ball.bounceVertical();
+                        wasHit = true;
+                }
+
+                if (wasHit) {
+                    brick.hide();
+                    break;
+                }
+            }
+
             switch (this.paddle.checkCollision(newBallPosition)) {
                 case (Side.Left):
                 case (Side.Right):
@@ -280,6 +320,7 @@ console.log('Hello from BrickBuster !!!');
 var game = new Game(
     <HTMLElement>document.getElementsByClassName("ball")[0],
     <HTMLElement>document.getElementsByClassName("paddle")[0],
+    <HTMLCollection>document.getElementsByClassName("brick"),
     <HTMLElement>document.getElementsByClassName("game-board")[0]
 );
 
