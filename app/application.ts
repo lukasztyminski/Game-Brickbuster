@@ -94,6 +94,8 @@ class Obstacle extends Rect {
 }
 
 class Ball extends Rect {
+    sprite: HTMLElement;
+
     radius : number;
     dir  : Vector;
 
@@ -102,40 +104,40 @@ class Ball extends Rect {
     wallRight: Obstacle;
     wallBottom: Obstacle;
 
-    constructor(radius : number, position : Point, dir : Vector) {
-        super(position.x, position.y, position.x + 2 * radius, position.y + 2 * radius);
+    constructor(sprite: HTMLElement, dir : Vector) {
+        var radius = parseInt(getComputedStyle(sprite)['border-top-left-radius']);
+        super(sprite.offsetLeft, sprite.offsetTop, sprite.offsetLeft + 2 * radius, sprite.offsetTop + 2 * radius);
+        this.sprite = sprite;
         this.radius = radius;        
         this.dir = dir;        
     }
 
-    move() : Point {
+    calculateNewPosition() : Rect {
         var newPosition = this.clone();
         newPosition.add(this.dir);
-
-        if (this.wallLeft.checkCollision(newPosition) || this.wallRight.checkCollision(newPosition)) {
-            this.dir.flipX();
-        }
-        if (this.wallTop.checkCollision(newPosition) || this.wallBottom.checkCollision(newPosition)) {
-            this.dir.flipY();
-        }    
-
-        this.moveTo(newPosition);
-
-        return this.topLeft;
+        return newPosition;        
     }
 
-    setConstraints(minX : number, minY : number, maxX : number, maxY : number) {
-        this.wallLeft = new Obstacle(minX - this.radius, minY - this.radius, minX, maxY + this.radius);
-        this.wallTop = new Obstacle(minX - this.radius, minY - this.radius, maxX + this.radius, minY);
-        this.wallRight = new Obstacle(maxX, minY - this.radius, maxX + this.radius, maxY + this.radius);
-        this.wallBottom = new Obstacle(minX - this.radius, maxY, maxX + this.radius, maxY + this.radius);        
-    }    
+    bounceHorizontal() {
+        this.dir.flipY();
+    }
+
+    bounceVertical() {
+        this.dir.flipX();
+    } 
+
+    moveTo(rect : Rect) {
+        super.moveTo(rect);
+
+        let {x: posX, y: posY} = this.topLeft;
+
+	    this.sprite.style.left = posX + 'px';
+        this.sprite.style.top = posY + 'px';         
+    }
 }
 
 class Game {
     loopInterval: number = 20;
-
-    ballElement : HTMLElement;
     ball: Ball;
 
     wallLeft : Obstacle;
@@ -144,21 +146,15 @@ class Game {
     wallBottom: Obstacle;    
 
     constructor(ballElement : HTMLElement, boardElement : HTMLElement) {
-        var radius = parseInt(getComputedStyle(ballElement)['border-top-left-radius']); 
-        this.ballElement = ballElement;
-
         this.ball = new Ball(
-            radius,
-            new Point(ballElement.offsetLeft, ballElement.offsetTop),
+            ballElement,            
             new Vector(1, -1) 
         );
 
-        this.createWalls(radius, 0, 0, boardElement.offsetWidth, boardElement.offsetHeight);
-
-        this.ball.setConstraints(0, 0, boardElement.offsetWidth, boardElement.offsetHeight);
+        this.createWalls(this.ball.radius, boardElement.offsetWidth, boardElement.offsetHeight);
     }
 
-    createWalls(radius : number, minX : number, minY : number, maxX : number, maxY : number) {
+    createWalls(radius : number, maxX : number, maxY : number) {
         this.wallLeft = new Obstacle(-radius, -radius, 0, maxY + radius);
         this.wallTop = new Obstacle(-radius, -radius, maxX + radius, 0);
         this.wallRight = new Obstacle(maxX, -radius, maxX + radius, maxY + radius);
@@ -167,10 +163,16 @@ class Game {
 
     run() {
        setInterval(() => {
-            let {x: posX, y: posY} = this.ball.move();
+            var newBallPosition = this.ball.calculateNewPosition();
 
-            this.ballElement.style.left = posX + 'px';
-            this.ballElement.style.top = posY + 'px'; 
+            if (this.wallLeft.checkCollision(newBallPosition) || this.wallRight.checkCollision(newBallPosition)) {
+                this.ball.bounceVertical();
+            }
+            if (this.wallTop.checkCollision(newBallPosition) || this.wallBottom.checkCollision(newBallPosition)) {
+                this.ball.bounceHorizontal();
+            }     
+
+            this.ball.moveTo(newBallPosition);
        }, this.loopInterval) 
     }
 }
