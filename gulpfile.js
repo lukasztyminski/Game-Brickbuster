@@ -55,7 +55,18 @@ gulp.task('compile-js', function () {
 
 gulp.task('compile-css', function () {
 	return gulp.src(config.stylesDir + '/index.less')
-		.pipe(plumber())
+		.pipe(plumber({
+			errorHandler: function (err) {
+            gutil.log(
+							gutil.colors.red("Less compile error:"),
+							err.message,
+							"\n\t",
+							gutil.colors.cyan("in file"),
+							err.fileName
+						);
+            this.emit('end');
+        }
+    }))
 		.pipe(sourceMaps.init())
 		.pipe(less({ paths: [config.stylesDir] }))
 		.pipe(rename('style.css'))
