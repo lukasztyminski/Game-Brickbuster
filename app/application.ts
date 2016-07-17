@@ -46,14 +46,50 @@ class Rect {
         this.bottomRight.x = rect.bottomRight.x;
         this.bottomRight.y = rect.bottomRight.y;
     }
+
+    width() {
+        return this.bottomRight.x - this.topLeft.x;
+    }
+
+    height() {
+        return this.bottomRight.y - this.topLeft.y;
+    }
+
+    centerX() {
+        return (this.topLeft.x + this.bottomRight.x) / 2;
+    }
+
+    centerY() {
+        return (this.topLeft.y + this.bottomRight.y) / 2;
+    }
+}
+
+enum Side {
+    None,
+    Left,
+    Top,
+    Right, 
+    Bottom
 }
 
 class Obstacle extends Rect {
-    checkCollision(anotherRect : Rect) : Boolean {
-        return this.topLeft.x < anotherRect.bottomRight.x 
-            && this.bottomRight.x > anotherRect.topLeft.x
-            && this.topLeft.y < anotherRect.bottomRight.y
-            && this.bottomRight.y > anotherRect.topLeft.y;   
+    checkCollision(anotherRect : Rect) : Side {
+        var w = 0.5 * (this.width() + anotherRect.width());
+        var h = 0.5 * (this.height() + anotherRect.height());
+        var dx = this.centerX() - anotherRect.centerX();
+        var dy = this.centerY() - anotherRect.centerY();
+
+        if (Math.abs(dx) <= w && Math.abs(dy) <= h) {
+            var wy = w * dy;
+            var hx = h * dx;
+            if (wy > hx) {
+                return wy > -hx ? Side.Bottom : Side.Left;
+            } else {
+                return wy > -hx ? Side.Right : Side.Top;
+            }
+        } else {
+            return Side.None;
+        }
     }
 }
 
