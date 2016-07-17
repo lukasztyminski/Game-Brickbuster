@@ -47,6 +47,18 @@ class Rect {
         this.bottomRight.y = rect.bottomRight.y;
     }
 
+    moveCenterXTo(centerX : number) {
+        var left = centerX - this.width() / 2;
+        var right = left + this.width();
+        this.topLeft.x = left;
+        this.bottomRight.x = right;
+    }
+
+    moveBottomTo(bottom: number) {
+        this.topLeft.y = bottom - this.height();
+        this.bottomRight.y = bottom; 
+    }
+
     width() {
         return this.bottomRight.x - this.topLeft.x;
     }
@@ -130,6 +142,11 @@ class Sprite extends Obstacle {
     hide() {
         this.sprite.style.display = 'none';
         this.isVisible = false;
+    }    
+
+    show() {
+        this.sprite.style.display = 'block';
+        this.isVisible = true;
     }    
 
     checkCollision(anotherRect : Rect) : Side {
@@ -246,7 +263,11 @@ class Game {
     wallRight: Obstacle;
     wallBottom: Obstacle;    
 
-    constructor(ballElement : HTMLElement, paddle: HTMLElement, bricks: HTMLCollection, boardElement : HTMLElement) {
+    livesLeft : number;
+    score: number;
+
+    constructor(ballElement : HTMLElement, paddle: HTMLElement, bricks: HTMLCollection, boardElement : HTMLElement, public livesLabel : HTMLElement,
+        public scoreLabel: HTMLElement, public newGameBtn: HTMLElement) {
         this.gameState = GameState.Running;
         this.paddle = new Paddle(paddle, boardElement.offsetWidth);
 
@@ -260,13 +281,48 @@ class Game {
         }
 
         this.createWalls(this.ball.radius, boardElement.offsetWidth, boardElement.offsetHeight);
-    }
+
+        this.newGame();
+
+        this.newGameBtn.addEventListener('click', () => this.newGame());
+    }    
 
     createWalls(radius : number, maxX : number, maxY : number) {
         this.wallLeft = new Obstacle(-radius, -radius, 0, maxY + radius);
         this.wallTop = new Obstacle(-radius, -radius, maxX + radius, 0);
         this.wallRight = new Obstacle(maxX, -radius, maxX + radius, maxY + radius);
         this.wallBottom = new Obstacle(-radius, maxY, maxX + radius, maxY + radius);        
+    }
+
+    newGame() {
+        this.newGameBtn.style.display = 'none';
+        this.score = 0;
+        this.livesLeft = 3;
+        this.livesLabel.innerText = '' + this.livesLeft;
+        this.score = 0;
+        this.scoreLabel.innerText = '' + this.score;
+        this.ball.show();
+        this.ball.bounceWithAngle(60);
+        var ballPosition = this.ball.clone();
+        ballPosition.moveCenterXTo(this.paddle.centerX());
+        ballPosition.moveBottomTo(this.paddle.topLeft.y - 4);
+        this.ball.moveTo(ballPosition);
+        this.gameState = GameState.Running;
+    }
+
+    lostLive() {
+        if (--this.livesLeft) {
+            this.ball.bounceWithAngle(60);
+            var ballPosition = this.ball.clone();
+            ballPosition.moveCenterXTo(this.paddle.centerX());
+            ballPosition.moveBottomTo(this.paddle.topLeft.y - 4);
+            this.ball.moveTo(ballPosition);
+        } else {
+            this.gameState = GameState.GameOver;
+            this.ball.hide();          
+            this.newGameBtn.style.display = 'block';  
+        }
+        this.livesLabel.innerText = '' + this.livesLeft;
     }
 
     run() {
@@ -286,8 +342,7 @@ class Game {
             }
 
             if (this.wallBottom.checkCollision(newBallPosition)) {
-                this.gameState = GameState.GameOver;
-                this.ball.hide();
+                this.lostLive();
                 return;
             }
 
@@ -316,6 +371,8 @@ class Game {
 
                 if (wasHit) {
                     brick.hide();
+                    this.score += 20;
+                    this.scoreLabel.innerText = '' + this.score;
                     break;
                 }
             }
@@ -335,7 +392,10 @@ var game = new Game(
     <HTMLElement>document.getElementsByClassName("ball")[0],
     <HTMLElement>document.getElementsByClassName("paddle")[0],
     <HTMLCollection>document.getElementsByClassName("brick"),
-    <HTMLElement>document.getElementsByClassName("game-board")[0]
+    <HTMLElement>document.getElementsByClassName("game-board")[0],
+    <HTMLElement>document.getElementById('lives'),
+    <HTMLElement>document.getElementById('score'),
+    <HTMLElement>document.getElementById('newGame')    
 );
 
 game.run();
