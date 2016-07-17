@@ -62,6 +62,16 @@ class Rect {
     centerY() {
         return (this.topLeft.y + this.bottomRight.y) / 2;
     }
+
+    moveLeft(step: number) {
+        this.topLeft.x -= step;
+        this.bottomRight.x -= step;
+    }
+
+    moveRight(step: number) {
+        this.topLeft.x += step;
+        this.bottomRight.x += step;
+    }
 }
 
 enum Side {
@@ -147,14 +157,49 @@ class Ball extends Sprite {
     bounceVertical() {
         this.dir.flipX();
     } 
+
+    hide() {
+        this.sprite.style.display = 'none';
+    }
 }
 
 class Paddle extends Sprite {
+    constructor(sprite: HTMLElement, public maxRight : number) {
+        super(sprite);
+    }
 
+    moveLeft(step?: number) {
+        var newPosition = this.clone();
+        newPosition.moveLeft(step);
+
+        if (newPosition.topLeft.x >= 0) {
+            this.moveTo(newPosition);
+        }
+    }
+
+    moveRight(step? : number) {
+        var newPosition = this.clone();
+        newPosition.moveRight(step);
+
+        if (newPosition.bottomRight.x <= this.maxRight) {
+            this.moveTo(newPosition);
+        }
+    }
+}
+
+enum GameState {
+    Running,
+    GameOver
+}
+
+enum KeyCodes {
+    LEFT = 37,
+    RIGHT = 39
 }
 
 class Game {
     loopInterval: number = 10;
+    gameState: GameState;
     ball: Ball;
     paddle: Paddle;
 
@@ -164,7 +209,8 @@ class Game {
     wallBottom: Obstacle;    
 
     constructor(ballElement : HTMLElement, paddle: HTMLElement, boardElement : HTMLElement) {
-        this.paddle = new Paddle(paddle);
+        this.gameState = GameState.Running;
+        this.paddle = new Paddle(paddle, boardElement.offsetWidth);
 
         this.ball = new Ball(
             ballElement,            
@@ -182,13 +228,35 @@ class Game {
     }
 
     run() {
+        document.addEventListener('keydown', (e) => {
+            if (this.gameState !== GameState.Running) {
+                return;
+            }
+            if (e.keyCode == KeyCodes.LEFT) {
+                this.paddle.moveLeft(5);
+            }
+            if (e.keyCode == KeyCodes.RIGHT) {
+                this.paddle.moveRight(5);
+            }
+
+        });
+
        setInterval(() => {
+            if (this.gameState !== GameState.Running) {
+                return;
+            }
             var newBallPosition = this.ball.calculateNewPosition();
+
+            if (this.wallBottom.checkCollision(newBallPosition)) {
+                this.gameState = GameState.GameOver;
+                this.ball.hide();
+                return;
+            }
 
             if (this.wallLeft.checkCollision(newBallPosition) || this.wallRight.checkCollision(newBallPosition)) {
                 this.ball.bounceVertical();
             }
-            if (this.wallTop.checkCollision(newBallPosition) || this.wallBottom.checkCollision(newBallPosition)) {
+            if (this.wallTop.checkCollision(newBallPosition)) {
                 this.ball.bounceHorizontal();
             }     
 
