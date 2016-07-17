@@ -102,10 +102,10 @@ class Ball extends Rect {
     wallRight: Obstacle;
     wallBottom: Obstacle;
 
-    constructor(radius : number, posX : number, posY : number, dirX : number, dirY : number) {
-        super(posX, posY, posX + 2 * radius, posY + 2 * radius);
+    constructor(radius : number, position : Point, dir : Vector) {
+        super(position.x, position.y, position.x + 2 * radius, position.y + 2 * radius);
         this.radius = radius;        
-        this.dir = new Vector(dirX, dirY);        
+        this.dir = dir;        
     }
 
     move() : Point {
@@ -132,18 +132,54 @@ class Ball extends Rect {
     }    
 }
 
+class Game {
+    loopInterval: number = 20;
+
+    ballElement : HTMLElement;
+    ball: Ball;
+
+    wallLeft : Obstacle;
+    wallTop: Obstacle;
+    wallRight: Obstacle;
+    wallBottom: Obstacle;    
+
+    constructor(ballElement : HTMLElement, boardElement : HTMLElement) {
+        var radius = parseInt(getComputedStyle(ballElement)['border-top-left-radius']); 
+        this.ballElement = ballElement;
+
+        this.ball = new Ball(
+            radius,
+            new Point(ballElement.offsetLeft, ballElement.offsetTop),
+            new Vector(1, -1) 
+        );
+
+        this.createWalls(radius, 0, 0, boardElement.offsetWidth, boardElement.offsetHeight);
+
+        this.ball.setConstraints(0, 0, boardElement.offsetWidth, boardElement.offsetHeight);
+    }
+
+    createWalls(radius : number, minX : number, minY : number, maxX : number, maxY : number) {
+        this.wallLeft = new Obstacle(-radius, -radius, 0, maxY + radius);
+        this.wallTop = new Obstacle(-radius, -radius, maxX + radius, 0);
+        this.wallRight = new Obstacle(maxX, -radius, maxX + radius, maxY + radius);
+        this.wallBottom = new Obstacle(-radius, maxY, maxX + radius, maxY + radius);        
+    }
+
+    run() {
+       setInterval(() => {
+            let {x: posX, y: posY} = this.ball.move();
+
+            this.ballElement.style.left = posX + 'px';
+            this.ballElement.style.top = posY + 'px'; 
+       }, this.loopInterval) 
+    }
+}
+
 console.log('Hello from BrickBuster !!!');
 
-var ballElement : HTMLElement = <HTMLElement>document.getElementsByClassName("ball")[0];
-var boardElement : HTMLElement = <HTMLElement>document.getElementsByClassName("game-board")[0];
+var game = new Game(
+    <HTMLElement>document.getElementsByClassName("ball")[0],
+    <HTMLElement>document.getElementsByClassName("game-board")[0]
+);
 
-var ball = new Ball(parseInt(getComputedStyle(ballElement)['border-top-left-radius']), ballElement.offsetLeft, ballElement.offsetTop, 1, -1);
-
-ball.setConstraints(0, 0, boardElement.offsetWidth, boardElement.offsetHeight);
-
-setInterval(() => {
-    let {x: posX, y: posY} = ball.move();
-
-    ballElement.style.left = posX + 'px';
-    ballElement.style.top = posY + 'px';        
-}, 20);
+game.run();
