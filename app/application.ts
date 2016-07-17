@@ -93,9 +93,9 @@ class Obstacle extends Rect {
             var wy = w * dy;
             var hx = h * dx;
             if (wy > hx) {
-                return wy > -hx ? Side.Bottom : Side.Left;
+                return wy > -hx ? Side.Top : Side.Left;
             } else {
-                return wy > -hx ? Side.Right : Side.Top;
+                return wy > -hx ? Side.Right : Side.Bottom;
             }
         } else {
             return Side.None;
@@ -144,6 +144,7 @@ class Ball extends Sprite {
 
     radius : number;
     dir  : Vector;
+    velocity: number;
 
     wallLeft : Obstacle;
     wallTop: Obstacle;
@@ -154,7 +155,8 @@ class Ball extends Sprite {
         var radius = parseInt(getComputedStyle(sprite)['border-top-left-radius']);
         super(sprite, sprite.offsetLeft, sprite.offsetTop, sprite.offsetLeft + 2 * radius, sprite.offsetTop + 2 * radius);
         this.sprite = sprite;
-        this.radius = radius;        
+        this.radius = radius;
+        this.velocity = 5;        
         this.dir = dir;        
     }
 
@@ -171,6 +173,12 @@ class Ball extends Sprite {
     bounceVertical() {
         this.dir.flipX();
     } 
+
+    bounceWithAngle(angle: number) {
+        angle = angle * (Math.PI / 180);
+        this.dir.x = Math.cos(angle) * this.velocity;
+        this.dir.y = -Math.sin(angle) * this.velocity;
+    }
 }
 
 class Paddle extends Sprite {
@@ -195,6 +203,19 @@ class Paddle extends Sprite {
             this.moveTo(newPosition);
         }
     }
+
+    calculateHitAngle(ballX : number, ballRadius : number) : number {
+        var hitSpot = ballX - this.topLeft.x;
+        var maxPaddle = this.width() + ballRadius;
+        var minPaddle = -ballRadius;
+        var paddleRange = maxPaddle - minPaddle;
+
+        var minAngle = 160;
+        var maxAngle = 20;
+        var angleRange = maxAngle - minAngle;
+
+        return ((hitSpot * angleRange) / paddleRange) + minAngle;
+    }
 }
 
 class Brick extends Sprite {
@@ -217,6 +238,8 @@ class Game {
     ball: Ball;
     paddle: Paddle;
     bricks: Array<Brick> = [];
+
+    keyMap = {};
 
     wallLeft : Obstacle;
     wallTop: Obstacle;
@@ -247,24 +270,20 @@ class Game {
     }
 
     run() {
-        document.addEventListener('keydown', (e) => {
-            if (this.gameState !== GameState.Running) {
-                return;
-            }
-            if (e.keyCode == KeyCodes.LEFT) {
-                this.paddle.moveLeft(30);
-            }
-            if (e.keyCode == KeyCodes.RIGHT) {
-                this.paddle.moveRight(30);
-            }
-
-        });
+        document.addEventListener('keyup', (e) => this.keyMap[e.keyCode] = false);
+        document.addEventListener('keydown', (e) => this.keyMap[e.keyCode] = true);
 
        setInterval(() => {
             if (this.gameState !== GameState.Running) {
                 return;
             }
             var newBallPosition = this.ball.calculateNewPosition();
+
+            if (this.keyMap[KeyCodes.LEFT]) {
+                this.paddle.moveLeft(5);
+            } else if (this.keyMap[KeyCodes.RIGHT]) {
+                this.paddle.moveRight(5);
+            }
 
             if (this.wallBottom.checkCollision(newBallPosition)) {
                 this.gameState = GameState.GameOver;
@@ -285,12 +304,13 @@ class Game {
                 switch (brick.checkCollision(newBallPosition)) {
                     case (Side.Left):
                     case (Side.Right):
-                        this.ball.bounceHorizontal();
+                        this.ball.bounceVertical();
                         wasHit = true;
                         break;
 
-                    case (Side.Top):                    
-                        this.ball.bounceVertical();
+                    case (Side.Top):
+                    case (Side.Bottom):                    
+                        this.ball.bounceHorizontal();
                         wasHit = true;
                 }
 
@@ -300,14 +320,8 @@ class Game {
                 }
             }
 
-            switch (this.paddle.checkCollision(newBallPosition)) {
-                case (Side.Left):
-                case (Side.Right):
-                    this.ball.bounceHorizontal();
-                    break;
-
-                case (Side.Top):
-                    this.ball.bounceVertical();
+            if (this.paddle.checkCollision(newBallPosition)) {
+                this.ball.bounceWithAngle(this.paddle.calculateHitAngle(this.ball.centerX(), this.ball.radius));
             }
 
             this.ball.moveTo(this.ball.calculateNewPosition());
