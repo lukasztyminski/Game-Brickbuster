@@ -31,17 +31,40 @@ class Rect {
         this.bottomRight = new Point(right, bottom);
     }
 
+    clone() : Rect {
+        return new Rect(this.topLeft.x, this.topLeft.y, this.bottomRight.x, this.bottomRight.y);
+    }
+
     add(point: Point) {
         this.topLeft.add(point);
         this.bottomRight.add(point);
+    }
+
+    moveTo(rect: Rect) {
+        this.topLeft.x = rect.topLeft.x;
+        this.topLeft.y = rect.topLeft.y;
+        this.bottomRight.x = rect.bottomRight.x;
+        this.bottomRight.y = rect.bottomRight.y;
+    }
+}
+
+class Obstacle extends Rect {
+    checkCollision(anotherRect : Rect) : Boolean {
+        return this.topLeft.x < anotherRect.bottomRight.x 
+            && this.bottomRight.x > anotherRect.topLeft.x
+            && this.topLeft.y < anotherRect.bottomRight.y
+            && this.bottomRight.y > anotherRect.topLeft.y;   
     }
 }
 
 class Ball extends Rect {
     radius : number;
     dir  : Vector;
-    min  : Point;
-    max  : Point;
+
+    wallLeft : Obstacle;
+    wallTop: Obstacle;
+    wallRight: Obstacle;
+    wallBottom: Obstacle;
 
     constructor(radius : number, posX : number, posY : number, dirX : number, dirY : number) {
         super(posX, posY, posX + 2 * radius, posY + 2 * radius);
@@ -50,27 +73,26 @@ class Ball extends Rect {
     }
 
     move() : Point {
-        if (this.topLeft.x + this.dir.x <= this.min.x) {
-            this.dir.flipX();
-        }
-        if (this.topLeft.y + this.dir.y <= this.min.y) {
-            this.dir.flipY();
-        }
-        if (this.topLeft.x + this.dir.x + this.radius * 2 >= this.max.x) {
-            this.dir.flipX();
-        }
-        if (this.topLeft.y + this.dir.y + this.radius * 2 >= this.max.y) {
-            this.dir.flipY();
-        }        
+        var newPosition = this.clone();
+        newPosition.add(this.dir);
 
-        this.add(this.dir);
+        if (this.wallLeft.checkCollision(newPosition) || this.wallRight.checkCollision(newPosition)) {
+            this.dir.flipX();
+        }
+        if (this.wallTop.checkCollision(newPosition) || this.wallBottom.checkCollision(newPosition)) {
+            this.dir.flipY();
+        }    
+
+        this.moveTo(newPosition);
 
         return this.topLeft;
     }
 
     setConstraints(minX : number, minY : number, maxX : number, maxY : number) {
-        this.min = new Point(minX, minY);
-        this.max = new Point(maxX, maxY);
+        this.wallLeft = new Obstacle(minX - this.radius, minY - this.radius, minX, maxY + this.radius);
+        this.wallTop = new Obstacle(minX - this.radius, minY - this.radius, maxX + this.radius, minY);
+        this.wallRight = new Obstacle(maxX, minY - this.radius, maxX + this.radius, maxY + this.radius);
+        this.wallBottom = new Obstacle(minX - this.radius, maxY, maxX + this.radius, maxY + this.radius);        
     }    
 }
 
